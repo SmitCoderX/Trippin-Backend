@@ -43,7 +43,7 @@ def register():
     existing_user = users.find_one(qry)
 
     if existing_user:
-        return "username already exists"
+        return jsonify({'message':"user already exists"})
         
     else:
         
@@ -59,7 +59,7 @@ def register():
             "mobile_no": int(request.args["mobile_no"]),
 
             })
-        return "user registered successfully"
+        return jsonify({'message':"user registered successfully"})
 
 
 @app.route('/login', methods = ['POST'])
@@ -78,7 +78,7 @@ def login():
             # })
             return make_response(jsonify({'token' : token}), 201)
         else:
-            return "user does not match"
+            return jsonify({'message':"user does not match"})
 
     else:
         return make_response("user not verify", 401)
