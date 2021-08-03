@@ -287,22 +287,18 @@ def places():
     loc = request.args['city']
 
     myQuery = {"city": loc}
-    # display_data = {
-    #     "name": 1,
-    #     "email": 1,
-    #     "mobile_no": 1,
-    #     "address": 1,
-    #     "desc": 1,
-    #     "location": 1,
-    #     "type": 1,
-    # }
+   
     display_data = {
         "username": 0,
         "password": 0,
         "role": 0,
     }
+    places_data = []
     for locs in users.find(myQuery, display_data):
-        return jsonify(locs)
+        places_data.append(locs)
+        
+    if places_data != ' ':    
+        return jsonify(places_data)
 
     else:
         return jsonify({"message": "no places to visit at this location :("})
@@ -327,9 +323,13 @@ def post_reviews(current_user):
 
     user = users.find_one({"_id": current_user["_id"]})
     business_id = request.args["business_id"]
+    query = {
+        "user_id": user['_id'],
+        "business_id": business_id,
+    }
 
-    # if Rdata[""]:
-    #     return jsonify({"message": "Cannot review same place multiple times"})
+    if Rdata.find_one(query):
+        return jsonify({"message": "Cannot review same place multiple times"})
 
     status = Rdata.insert({
         "_id": str(uuid.uuid4()),
@@ -351,28 +351,16 @@ def get_reviews(id):
     myQuery = {}
     if id == Rdata['user_id']:
         myQuery = {"user_id": id}
-        # display_data = {
-        #     "_id": 0,
-        #     # "user_id": 1,
-        #     # "business_id": 1,
-        #     # "business_name": 1,
-        #     # "review_desc": 1,
-        #     # "ratings": 1,
-        # }
 
     elif id == Rdata['business_id']:
         myQuery = {"business_id": id}
 
-    display_data = {
-        "_id": 0,
-        # "user_id": 1,
-        # "business_id": 1,
-        # "business_name": 1,
-        # "review_desc": 1,
-        # "ratings": 1,
-    }
-    for locs in Rdata.find(myQuery, display_data):
-        return jsonify(locs)
+    rws = []
+    for locs in Rdata.find(myQuery):
+        rws.append(locs)
+
+    if rws != ' ':
+        return jsonify(rws)
 
     else:
         return jsonify({"message": "no reviews yet :("})
