@@ -335,27 +335,29 @@ def post_reviews():
 
 @app.route("/get_reviews/<path:id>",methods = ['GET'])
 def get_reviews(id):
+    myQuery = {}
     if id == Rdata['user_id']:
         myQuery = {"user_id": id}
-        display_data = {
-            "_id": 0,
-            "user_id": 1,
-            "business_id": 1,
-            "business_name": 1,
-            "review_desc": 1,
-            "ratings": 1,
-        }
+        # display_data = {
+        #     "_id": 0,
+        #     # "user_id": 1,
+        #     # "business_id": 1,
+        #     # "business_name": 1,
+        #     # "review_desc": 1,
+        #     # "ratings": 1,
+        # }
 
     elif id == Rdata['business_id']:
         myQuery = {"business_id": id}
-        display_data = {
-            "_id": 0,
-            "user_id": 1,
-            "business_id": 1,
-            "business_name": 1,
-            "review_desc": 1,
-            "ratings": 1,
-        }
+
+    display_data = {
+        "_id": 0,
+        # "user_id": 1,
+        # "business_id": 1,
+        # "business_name": 1,
+        # "review_desc": 1,
+        # "ratings": 1,
+    }
     for locs in Rdata.find(myQuery, display_data):
         return jsonify(locs)
 
