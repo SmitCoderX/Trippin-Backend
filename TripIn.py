@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, make_response, redirect, url_for, send_from_directory, abort
+from flask import Flask, json, jsonify, request, make_response, redirect, url_for, send_from_directory, abort
 import pymongo
 import bcrypt, jwt, datetime, uuid, os
 from functools import wraps
@@ -323,12 +323,25 @@ def get_image(id):
 
 @app.route("/post_reviews",methods = ['POST'])
 @token_verify
-def post_reviews():
-    review_data =  request.get_json()
-    status = Rdata.insert(review_data)
+def post_reviews(current_user):
+
+    user = users.find_one({"_id": current_user["_id"]})
+    business_id = request.args["business_id"]
+
+    # if Rdata[""]:
+    #     return jsonify({"message": "Cannot review same place multiple times"})
+
+    status = Rdata.insert({
+        "_id": str(uuid.uuid4()),
+        "user_id": user['_id'],
+        "business_id": business_id,
+        "name": user['name'],
+        "review": request.args["review"],
+        "ratings": float(request.args["ratings"]),
+    })
 
     if status:
-            return jsonify({'message':"Review registered successfully"})
+        return jsonify({'message':"Review registered successfully"})
 
     return jsonify({"message":'please try again'})
 
