@@ -18,7 +18,7 @@ app.config['MAX_CONTENT_LENGTH'] =  2 * 1024 * 1024
 myClient = pymongo.MongoClient("mongodb+srv://shinchan:cvcvpo123@mycluster1.fzgzf.mongodb.net/tripin?retryWrites=true&w=majority",ssl=True,ssl_cert_reqs='CERT_NONE')
 mydb = myClient["tripin"]
 users = mydb["user_data"]
-#bus_data = mydb["bus_data"]
+Rdata = mydb["review_data"]
 
 # ---------------------------------------------------///////       User routes      ///////////-------------------------------------------------
 
@@ -143,7 +143,7 @@ def me(current_user):
     else:
         return jsonify({"message":"request cannot be processed, please try again!!"})
 
-@app.route('/images', methods=['GET', 'POST'])
+@app.route('/upload_images', methods=['POST'])
 @token_verify
 def upload_file(current_user):
     user = users.find_one({"_id": current_user['_id']})
@@ -158,20 +158,21 @@ def upload_file(current_user):
             return jsonify({"message":'no file selected'})
 
         if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
+            new_name =user['_id'] + '.jpg'
+            filename = secure_filename(new_name)
             #file.save(os.path.join(app.config['UPLOAD_FOLDER'], user['_id']) + '.' + filename.rsplit('.', 1)[1].lower())
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], user['_id']) + '.jpg')
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             return jsonify({"message":'file uploaded successfully'})
 
-    elif request.method == 'GET':
+    # elif request.method == 'GET':
 
-        img = user['_id']
-        img = f"{img}.jpg"
-        #return str(img)
-        try:
-            return send_from_directory(app.config["UPLOAD_FOLDER"], filename=img, as_attachment=True)
-        except FileNotFoundError:
-            abort(404)
+    #     img = user['_id']
+    #     img = f"{img}.jpg"
+    #     #return str(img)
+    #     try:
+    #         return send_from_directory(app.config["UPLOAD_FOLDER"], filename=img, as_attachment=True)
+    #     except FileNotFoundError:
+    #         abort(404)
 
 @app.route('/update', methods = ['PUT'])
 @token_verify
@@ -216,7 +217,7 @@ def me_update(current_user):
 
     return jsonify({"message":"request cannot be processed, please try again!!"})
 
-@app.route('/me', methods = ['DELETE'])
+@app.route('/delete_user', methods = ['DELETE'])
 @token_verify
 def delete_user(current_user):
     # login_data = ({
@@ -271,7 +272,7 @@ def business_register():
             "mobile_no": request.args["mobile_no"],
             "address": request.args["address"],
             "desc": request.args["desc"],
-            "location": request.args["location"],
+            "city": request.args["city"],
             "type": request.args["type"],
             "role": "business",
             })
@@ -283,23 +284,135 @@ def business_register():
 
 @app.route('/places', methods = ['GET'])
 def places():
-    loc = request.args['loc']
+    loc = request.args['city']
 
-    myQuery = {"location": loc}
+    myQuery = {"city": loc}
+    # display_data = {
+    #     "name": 1,
+    #     "email": 1,
+    #     "mobile_no": 1,
+    #     "address": 1,
+    #     "desc": 1,
+    #     "location": 1,
+    #     "type": 1,
+    # }
     display_data = {
-        "name": 1,
-        "email": 1,
-        "mobile_no": 1,
-        "address": 1,
-        "desc": 1,
-        "location": 1,
-        "type": 1,
+        "username": 0,
+        "password": 0,
+        "role": 0,
     }
     for locs in users.find(myQuery, display_data):
         return jsonify(locs)
 
     else:
         return jsonify({"message": "no places to visit at this location :("})
+
+@app.route("/getimage/<path:id>",methods = ['GET'])
+def get_image(id):
+
+    img = f"{id}.jpg"
+    try:
+        #return send_from_directory(app.config["UPLOAD_FOLDER"], filename=image_name, as_attachment=True)
+        return redirect(url_for('static', filename='images/' + img), code=301)
+    except FileNotFoundError:
+        abort(404)
+
+
+# -----------------------------///////////////////              review routes               //////////////----------------------------------------
+
+
+@app.route("/post_reviews",methods = ['POST'])
+@token_verify
+def post_reviews():
+    review_data =  request.get_json()
+    status = Rdata.insert(review_data)
+
+    if status:
+            return jsonify({'message':"Review registered successfully"})
+
+    return jsonify({"message":'please try again'})
+
+
+@app.route("/get_reviews/<path:id>",methods = ['GET'])
+def get_reviews(id):
+    if id == Rdata['user_id']:
+        myQuery = {"user_id": id}
+        display_data = {
+            "_id": 0,
+            "user_id": 1,
+            "business_id": 1,
+            "business_name": 1,
+            "review_desc": 1,
+            "ratings": 1,
+        }
+
+    elif id == Rdata['business_id']:
+        myQuery = {"business_id": id}
+        display_data = {
+            "_id": 0,
+            "user_id": 1,
+            "business_id": 1,
+            "business_name": 1,
+            "review_desc": 1,
+            "ratings": 1,
+        }
+    for locs in Rdata.find(myQuery, display_data):
+        return jsonify(locs)
+
+    else:
+        return jsonify({"message": "no reviews yet :("})
+
+@app.route("/update_reviews",methods = ['PUT'])
+@token_verify
+def update_reviews(current_user):
+    user = users.find_one({"_id": current_user["_id"]})
+
+    myQuery = {"user_id": user['_id']}
+
+    get_new_data =  request.get_json()
+    new_data = {"$set":{}}
+
+    for key in get_new_data:
+        new_data["$set"][key] = get_new_data[key]
+
+    
+    status = Rdata.update_one(myQuery, new_data)
+    if status:
+        return jsonify({'message': "updated successfully"})
+
+    return jsonify({"message":"request cannot be processed, please try again!!"})
+
+
+@app.route('/delete_rerview', methods = ['DELETE'])
+@token_verify
+def delete_review(current_user):
+    user = users.find_one({"_id": current_user["_id"]})
+
+    myQuery = {"_id": user['_id']}
+    status = Rdata.delete_one(myQuery)
+
+    if status:
+        return jsonify({'message': "Review deleted successfully"})
+
+    return jsonify({"message":"request cannot be processed, please try again!!"})
+
+
+@app.route("/avg_ratings",methods = ['GET'])
+def average():
+    raw_data = request.get_json()
+    if raw_data == ' ':
+        return jsonify({"message": "Data not found. List is empty"})
+
+    lst = raw_data['total']
+    total_count = len(lst)
+    total = sum(lst)
+
+    avg = total / total_count
+    result = round(avg, 1)
+    if result == '':
+        return jsonify({"message": 'request cannot be processed, please try again!!'})
+        
+    return jsonify({"result": result})
 
 if __name__ == "__main__":
     app.run(debug=True)
