@@ -2,7 +2,7 @@ from flask import Flask, json, jsonify, request, make_response, redirect, url_fo
 import pymongo
 import bcrypt, jwt, datetime, uuid, os
 from functools import wraps
-from pymongo import message
+#from pymongo import message
 from werkzeug.utils import secure_filename
 
 
@@ -64,14 +64,18 @@ def register():
         salt = bcrypt.gensalt(10)
         hashpass =  bcrypt.hashpw(request.args['password'].encode('utf-8'),salt)
 
+        id = str(uuid.uuid4())
+        img_url = "http://100.25.142.90/static/images/" + id + ".jpg"
+
         status = users.insert({
-            "_id": str(uuid.uuid4()),
+            "_id": id,
             'username': request.args['username'],
             "password": hashpass,
             "name": request.args["name"],
             "email": request.args["email"],
             "mobile_no": request.args["mobile_no"],
             "role": "user",
+            "image": img_url,
             })
         if status:
             return jsonify({'message':"user registered successfully"})
@@ -84,16 +88,9 @@ def login():
     login_data = ({
         "username": request.args['username'],
         "password": request.args['password'],
-        #"role": request.args['role']
         })
-    # if login_data["role"] == 'business':
-    #     login_name = bus_data.find_one({"username": login_data["username"]})
-
-    # elif login_data["role"] == 'user':
+    
     login_name = users.find_one({"username": login_data["username"]})
-
-    # else:
-    #     return jsonify({"message": "please select for business or not!!"})
 
     if login_name:
         if bcrypt.checkpw(login_data['password'].encode('utf-8'), login_name['password']):
@@ -113,20 +110,7 @@ def login():
 @app.route('/me', methods = ['GET'])
 @token_verify
 def me(current_user):
-    # login_data = ({
-    #     "username": current_user['username'],
-    #     "role": current_user['role']
-    #     })
-
-    # dbs = [users, bus_data]
-    # for db in dbs:
-    #     if (db.find_one({"username": current_user['username']})):
-    #         login_data = db.find_one({"username": current_user['username']})
-
-    # if login_data["role"] == 'business':
-    #     user = bus_data.find_one({"username": login_data["username"]})
-
-    # elif login_data["role"] == 'user':
+    
     user = users.find_one({"_id": current_user["_id"]})
 
     json_data = {}
@@ -160,46 +144,13 @@ def upload_file(current_user):
         if file and allowed_file(file.filename):
             new_name =user['_id'] + '.jpg'
             filename = secure_filename(new_name)
-            #file.save(os.path.join(app.config['UPLOAD_FOLDER'], user['_id']) + '.' + filename.rsplit('.', 1)[1].lower())
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             return jsonify({"message":'file uploaded successfully'})
-
-    # elif request.method == 'GET':
-
-    #     img = user['_id']
-    #     img = f"{img}.jpg"
-    #     #return str(img)
-    #     try:
-    #         return send_from_directory(app.config["UPLOAD_FOLDER"], filename=img, as_attachment=True)
-    #     except FileNotFoundError:
-    #         abort(404)
 
 @app.route('/update', methods = ['PUT'])
 @token_verify
 def me_update(current_user):
-    # login_data = ({
-    #     "username": current_user['username'],
-    #     "role": current_user['role']
-    #     })
-    # if login_data["role"] == 'business':
-    #     user = bus_data.find_one({"username": login_data["username"]})
-
-    #     myQuery = {"username": user['username']}
-
-    #     get_new_data =  request.get_json()
-    #     new_data = {"$set":{}}
-
-    #     for key in get_new_data:
-    #         new_data["$set"][key] = get_new_data[key]
-
-    
-    #     status = bus_data.update_one(myQuery, new_data)
-    #     if status:
-    #         return jsonify({'message': "updated successfully"})
-
-    #     return jsonify({"message":"request cannot be processed, please try again!!"})
-
-    #elif login_data["role"] == 'user':
+   
     user = users.find_one({"_id": current_user["_id"]})
 
     myQuery = {"_id": user['_id']}
@@ -220,22 +171,7 @@ def me_update(current_user):
 @app.route('/delete_user', methods = ['DELETE'])
 @token_verify
 def delete_user(current_user):
-    # login_data = ({
-    #     "username": current_user['username'],
-    #     "role": current_user['role']
-    #     })
-    # if login_data["role"] == 'business':
-    #     user = bus_data.find_one({"username": login_data["username"]})
-
-    #     myQuery = {"username": user['username']}
-    #     status = bus_data.delete_one(myQuery)
-
-    #     if status:
-    #         return jsonify({'message': "record deleted successfully"})
-
-    #     return jsonify({"message":"request cannot be processed, please try again!!"})
-
-    #elif login_data["role"] == 'user':
+    
     user = users.find_one({"_id": current_user["_id"]})
 
     myQuery = {"_id": user['_id']}
@@ -262,9 +198,11 @@ def business_register():
     else:
         salt = bcrypt.gensalt(10)
         hashpass =  bcrypt.hashpw(request.args['password'].encode('utf-8'),salt)
+        id = str(uuid.uuid4())
+        img_url = "http://100.25.142.90/static/images/" + id + ".jpg"
 
         status = users.insert({
-            "_id": str(uuid.uuid4()),
+            "_id": id,
             "username": request.args["username"],
             "password": hashpass,
             "name": request.args["name"],
@@ -275,6 +213,7 @@ def business_register():
             "city": request.args["city"],
             "type": request.args["type"],
             "role": "business",
+            "image": img_url,
             })
 
         if status:
@@ -308,7 +247,6 @@ def get_image(id):
 
     img = f"{id}.jpg"
     try:
-        #return send_from_directory(app.config["UPLOAD_FOLDER"], filename=image_name, as_attachment=True)
         return redirect(url_for('static', filename='images/' + img), code=301)
     except FileNotFoundError:
         abort(404)
@@ -336,6 +274,7 @@ def post_reviews(current_user):
         "user_id": user['_id'],
         "business_id": business_id,
         "name": user['name'],
+        "username": user['username'],
         "review": request.args["review"],
         "ratings": float(request.args["ratings"]),
     })
