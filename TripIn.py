@@ -50,6 +50,28 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def avg_ratings(lst, business_id):
+
+    # new_lst = []
+    # for rate in lst:
+    #     new_lst.append(rate['ratings'])
+
+    count = len(lst)
+    total = sum(lst)
+    avg = total / count
+    result = round(avg, 1)
+
+    myQuery = {"_id": business_id}
+
+    new_data = {"$set":{"average_ratings": result}}
+    
+    status = users.update_one(myQuery, new_data)
+    if status:
+        return True
+
+    return False
+
+
 @app.route('/user_register', methods = ['POST'])
 def register():
     qry = {'username': request.args['username']}
@@ -214,6 +236,7 @@ def business_register():
             "type": request.args["type"],
             "role": "business",
             "image": img_url,
+            "average_ratings": 0.0,
             })
 
         if status:
@@ -261,6 +284,11 @@ def post_reviews(current_user):
 
     user = users.find_one({"_id": current_user["_id"]})
     business_id = request.args["business_id"]
+    business = users.find_one({"_id": business_id})
+
+    # if business["image"] == ' ':
+    #     img = "image not found"
+    
     query = {
         "user_id": user['_id'],
         "business_id": business_id,
@@ -269,17 +297,27 @@ def post_reviews(current_user):
     if Rdata.find_one(query):
         return jsonify({"message": "Cannot review same place multiple times"})
 
-    status = Rdata.insert({
+    status1 = Rdata.insert({
         "_id": str(uuid.uuid4()),
         "user_id": user['_id'],
         "business_id": business_id,
+        "business_name": business["name"],
+        "business_username": business["username"],
+        "business_img": business["image"],
         "name": user['name'],
         "username": user['username'],
         "review": request.args["review"],
         "ratings": float(request.args["ratings"]),
     })
 
-    if status:
+    reviews_data = Rdata.find({"business_id": business_id})
+    lst = []
+    for i in reviews_data:
+        lst.append(i["ratings"])
+
+    status2 = avg_ratings(lst, business_id)
+
+    if status1 and status2:
         return jsonify({'message':"Review registered successfully"})
 
     return jsonify({"message":'please try again'})
@@ -294,6 +332,9 @@ def get_reviews(id):
     elif id == Rdata['business_id']:
         myQuery = {"business_id": id}
 
+    else:
+        return jsonify({"message": "No reviews yet :) "})
+
     rws = []
     for locs in Rdata.find(myQuery):
         rws.append(locs)
@@ -304,7 +345,7 @@ def get_reviews(id):
     else:
         return jsonify({"message": "no reviews yet :("})
 
-@app.route("/update_reviews",methods = ['PUT'])
+@app.route("/update_review",methods = ['PUT'])
 @token_verify
 def update_reviews(current_user):
     user = users.find_one({"_id": current_user["_id"]})
@@ -325,7 +366,7 @@ def update_reviews(current_user):
     return jsonify({"message":"request cannot be processed, please try again!!"})
 
 
-@app.route('/delete_rerview', methods = ['DELETE'])
+@app.route('/delete_review', methods = ['DELETE'])
 @token_verify
 def delete_review(current_user):
     user = users.find_one({"_id": current_user["_id"]})
@@ -338,23 +379,6 @@ def delete_review(current_user):
 
     return jsonify({"message":"request cannot be processed, please try again!!"})
 
-
-@app.route("/avg_ratings",methods = ['GET'])
-def average():
-    raw_data = request.get_json()
-    if raw_data == ' ':
-        return jsonify({"message": "Data not found. List is empty"})
-
-    lst = raw_data['total']
-    total_count = len(lst)
-    total = sum(lst)
-
-    avg = total / total_count
-    result = round(avg, 1)
-    if result == '':
-        return jsonify({"message": 'request cannot be processed, please try again!!'})
-        
-    return jsonify({"result": result})
 
 if __name__ == "__main__":
     app.run(debug=True)
