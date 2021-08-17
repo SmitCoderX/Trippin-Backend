@@ -20,7 +20,7 @@ mydb = myClient["tripin"]
 users = mydb["user_data"]
 Rdata = mydb["review_data"]
 
-# ---------------------------------------------------///////       User routes      ///////////-------------------------------------------------
+# ---------------------------------------------------///////       Token Verification      ///////////-------------------------------------------------
 
 
 def token_verify(f):
@@ -46,15 +46,18 @@ def token_verify(f):
 
     return decorated
 
+
+# ---------------------------------------------------///////       file extension verification      ///////////-------------------------------------------------
+
+
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def avg_ratings(lst, business_id):
+# ---------------------------------------------------///////       Average ratings calculation      ///////////-------------------------------------------------
 
-    # new_lst = []
-    # for rate in lst:
-    #     new_lst.append(rate['ratings'])
+
+def avg_ratings(lst, business_id):
 
     count = len(lst)
     total = sum(lst)
@@ -70,6 +73,9 @@ def avg_ratings(lst, business_id):
         return True
 
     return False
+
+
+# ---------------------------------------------------///////       User register route      ///////////-------------------------------------------------
 
 
 @app.route('/user_register', methods = ['POST'])
@@ -105,6 +111,9 @@ def register():
         return jsonify({"message":"Request cannot be processed. Please  try again later"})
 
 
+# ---------------------------------------------------///////       User/Businees login route      ///////////-------------------------------------------------
+
+
 @app.route('/login', methods = ['POST'])
 def login():
     login_data = ({
@@ -116,7 +125,7 @@ def login():
 
     if login_name:
         if bcrypt.checkpw(login_data['password'].encode('utf-8'), login_name['password']):
-            token = jwt.encode({'_id': login_name['_id'], 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours = 24)}, app.config['SECRET_KEY'], algorithm="HS256") 
+            token = jwt.encode({'_id': login_name['_id'], 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours = 720)}, app.config['SECRET_KEY'], algorithm="HS256") 
             
             return make_response(jsonify({
                 'message': "Login Successfull",
@@ -127,6 +136,9 @@ def login():
 
     else:
         return make_response("user not found", 401)
+
+
+# ---------------------------------------------------///////       Route for sending user/business data      ///////////-------------------------------------------------
 
 
 @app.route('/me', methods = ['GET'])
@@ -149,6 +161,10 @@ def me(current_user):
     else:
         return jsonify({"message":"request cannot be processed, please try again!!"})
 
+
+# ---------------------------------------------------///////       Route for uploading images      ///////////-------------------------------------------------
+
+
 @app.route('/upload_images', methods=['POST'])
 @token_verify
 def upload_file(current_user):
@@ -168,6 +184,10 @@ def upload_file(current_user):
             filename = secure_filename(new_name)
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             return jsonify({"message":'file uploaded successfully'})
+
+
+# ---------------------------------------------------///////       Route to update User/business info       ///////////-------------------------------------------------
+
 
 @app.route('/update', methods = ['PUT'])
 @token_verify
@@ -190,6 +210,10 @@ def me_update(current_user):
 
     return jsonify({"message":"request cannot be processed, please try again!!"})
 
+
+# ---------------------------------------------------///////       Account deletion route      ///////////-------------------------------------------------
+
+
 @app.route('/delete_user', methods = ['DELETE'])
 @token_verify
 def delete_user(current_user):
@@ -207,7 +231,7 @@ def delete_user(current_user):
 
 
 
-# ---------------------------------------------//////////          Business routes         //////////------------------------------------------------
+# ---------------------------------------------//////////          Business register route         //////////------------------------------------------------
 
 @app.route('/business_register', methods = ['POST'])
 def business_register():
@@ -244,6 +268,10 @@ def business_register():
 
         return jsonify({"message":'please try again'})
 
+
+# ---------------------------------------------------///////       Route to get nearby places      ///////////-------------------------------------------------
+
+
 @app.route('/places', methods = ['GET'])
 def places():
     loc = request.args['city']
@@ -265,6 +293,10 @@ def places():
     else:
         return jsonify({"message": "no places to visit at this location :("})
 
+
+# ---------------------------------------------------///////       Route to get images      ///////////-------------------------------------------------
+
+
 @app.route("/getimage/<path:id>",methods = ['GET'])
 def get_image(id):
 
@@ -275,7 +307,7 @@ def get_image(id):
         abort(404)
 
 
-# -----------------------------///////////////////              review routes               //////////////----------------------------------------
+# -----------------------------///////////////////              route to post reviews               //////////////----------------------------------------
 
 
 @app.route("/post_reviews",methods = ['POST'])
@@ -285,9 +317,6 @@ def post_reviews(current_user):
     user = users.find_one({"_id": current_user["_id"]})
     business_id = request.args["business_id"]
     business = users.find_one({"_id": business_id})
-
-    # if business["image"] == ' ':
-    #     img = "image not found"
     
     query = {
         "user_id": user['_id'],
@@ -323,27 +352,47 @@ def post_reviews(current_user):
     return jsonify({"message":'please try again'})
 
 
+# ---------------------------------------------------///////       Route to get reviews      ///////////-------------------------------------------------
+
+
 @app.route("/get_reviews/<path:id>",methods = ['GET'])
 def get_reviews(id):
     myQuery = {}
-    if id == Rdata['user_id']:
+    rws = []
+
+    user = Rdata.find_one({'user_id': id})
+    business = Rdata.find_one({'business_id': id}) 
+
+    if user != None and user['user_id'] == id:
         myQuery = {"user_id": id}
 
-    elif id == Rdata['business_id']:
+    elif business != None and business['business_id'] == id:
         myQuery = {"business_id": id}
 
     else:
-        return jsonify({"message": "No reviews yet :) "})
+        return jsonify({
+            "message": "no reviews yet :(",
+            "reviews": rws
+        })
 
-    rws = []
     for locs in Rdata.find(myQuery):
         rws.append(locs)
 
+    
     if rws != ' ':
-        return jsonify(rws)
+        return jsonify({
+            "message": "here are some reviews",
+            "reviews": rws
+        })
 
     else:
-        return jsonify({"message": "no reviews yet :("})
+        return jsonify({
+            "message": "no reviews yet :(",
+            "reviews": rws
+        })
+
+# ---------------------------------------------------///////       Route to update reviews      ///////////-------------------------------------------------
+
 
 @app.route("/update_review",methods = ['PUT'])
 @token_verify
@@ -366,6 +415,9 @@ def update_reviews(current_user):
     return jsonify({"message":"request cannot be processed, please try again!!"})
 
 
+# ---------------------------------------------------///////       Route to delete reviews      ///////////-------------------------------------------------
+
+
 @app.route('/delete_review', methods = ['DELETE'])
 @token_verify
 def delete_review(current_user):
@@ -378,6 +430,9 @@ def delete_review(current_user):
         return jsonify({'message': "Review deleted successfully"})
 
     return jsonify({"message":"request cannot be processed, please try again!!"})
+
+
+# ---------------------------------------------------///////       Main function to run the flask app      ///////////-------------------------------------------------
 
 
 if __name__ == "__main__":
