@@ -1,1 +1,1 @@
-web: gunicorn app:TripIn
+web: gunicorn TripIn:app
