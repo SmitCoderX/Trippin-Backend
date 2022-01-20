@@ -15,7 +15,7 @@ app.config['SECRET_KEY'] = 'secretkeylol'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] =  2 * 1024 * 1024
 
-myClient = pymongo.MongoClient("mongodb+srv://shinchan:cvcvpo123@mycluster1.fzgzf.mongodb.net/tripin?retryWrites=true&w=majority",ssl=True,ssl_cert_reqs='CERT_NONE')
+myClient = pymongo.MongoClient("mongodb+srv://smit:cvcvpo123@tripin.vlfo9.mongodb.net/tripin?retryWrites=true&w=majority",ssl=True,ssl_cert_reqs='CERT_NONE')
 mydb = myClient["tripin"]
 users = mydb["user_data"]
 Rdata = mydb["review_data"]
