@@ -93,7 +93,7 @@ def register():
         hashpass =  bcrypt.hashpw(request.args['password'].encode('utf-8'),salt)
 
         id = str(uuid.uuid4())
-        img_url = "http://100.25.142.90/static/images/" + id + ".jpg"
+        img_url = "https://trippin-api-backend.herokuapp.com/static/images/" + id + ".jpg"
 
         status = users.insert({
             "_id": id,
