@@ -6,7 +6,7 @@ from functools import wraps
 from werkzeug.utils import secure_filename
 
 
-UPLOAD_FOLDER = 'app/static/images'
+UPLOAD_FOLDER = '~/app/static/images'
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
 
 app = Flask(__name__)
